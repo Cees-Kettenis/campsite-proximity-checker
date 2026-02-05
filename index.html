@@ -396,13 +396,14 @@
       }
 
     .modal {
-      width: min(560px, 100%);
+      width: min(1280px, 100%);
       background: rgba(16, 20, 28, 0.98);
       border: 1px solid var(--border);
       border-radius: 18px;
       padding: 18px;
       box-shadow: var(--shadow);
-      display: grid;
+      display: flex;
+      flex-direction: column;
       gap: 12px;
       max-height: 85vh;
       overflow: hidden;
@@ -430,6 +431,9 @@
         color: var(--ink);
         font-size: 1.1rem;
         cursor: pointer;
+        display: flex;
+        justify-content: center;
+        align-items: center;
       }
 
     .modal-body ul {
@@ -439,10 +443,13 @@
       display: grid;
       gap: 8px;
       color: var(--muted);
-      font-size: 0.95rem;
+      font-size: 1rem;
+      line-height: 1.5;
     }
 
     .modal-body {
+      flex: 1;
+      min-height: 0;
       overflow-y: auto;
       padding-right: 4px;
     }
@@ -632,23 +639,6 @@
         text-align: center;
         border-top: 1px solid var(--border);
         background: rgba(13, 17, 25, 0.7);
-      }
-
-      .notes {
-        margin-top: 14px;
-        font-size: 0.85rem;
-        color: var(--muted);
-        display: grid;
-        gap: 6px;
-      }
-
-      .notes ul {
-        margin: 0;
-        padding-left: 18px;
-      }
-
-      .notes li {
-        margin-bottom: 6px;
       }
 
       input:focus-visible,
@@ -922,20 +912,6 @@
             Upload a KMZ to see results.
           </div>
         </div>
-
-        <div class="notes">
-          <strong>Notes</strong>
-          <ul>
-            <li>
-              Only Placemark points are considered. Lines and polygons are
-              ignored.
-            </li>
-            <li>
-              Large files may take a moment; a grid index keeps the scan
-              efficient.
-            </li>
-          </ul>
-        </div>
       </section>
     </main>
 
@@ -967,9 +943,9 @@
             <li><span>3.</span>Select your KMZ file and set the distance threshold in meters. By default it will be set to 30 meters.</li>
             <img class="user-manual-image" src="https://raw.githubusercontent.com/Cees-Kettenis/campsite-proximity-checker/refs/heads/main/assets/screenshots/3.png" />
             <li><span>4.</span>Click Analyze proximity</li>
-            <img class="user-manual-image" src="https://raw.githubusercontent.com/Cees-Kettenis/campsite-proximity-checker/refs/heads/main/assets/screenshots/3.png" />
+            <img class="user-manual-image" src="https://raw.githubusercontent.com/Cees-Kettenis/campsite-proximity-checker/refs/heads/main/assets/screenshots/4.png" />
             <li><span>5.</span>The results will appear below. You can check the points that are to close, and ensure all layers are found.</li>
-            <img class="user-manual-image" src="https://raw.githubusercontent.com/Cees-Kettenis/campsite-proximity-checker/refs/heads/main/assets/screenshots/3.png" />
+            <img class="user-manual-image" src="https://raw.githubusercontent.com/Cees-Kettenis/campsite-proximity-checker/refs/heads/main/assets/screenshots/5.png" />
 
 
         </ul>
