@@ -1,0 +1,1141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>KMZ Point Proximity Checker (My Maps)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0d12;
+      --bg-2: #101621;
+      --panel: rgba(16, 20, 28, 0.88);
+      --panel-strong: rgba(21, 27, 38, 0.98);
+      --border: rgba(140, 150, 170, 0.18);
+      --ink: #f2f5f8;
+      --muted: #a7b0bf;
+      --accent: #4dd1c8;
+      --accent-strong: #28a4a0;
+      --accent-warm: #f3a83b;
+      --shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+      --glow: 0 0 40px rgba(77, 209, 200, 0.18);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(600px 380px at 8% 0%, rgba(79, 214, 204, 0.18), transparent 60%),
+        radial-gradient(700px 420px at 92% 6%, rgba(243, 168, 59, 0.12), transparent 60%),
+        linear-gradient(120deg, var(--bg), var(--bg-2));
+    }
+
+    .shell {
+      max-width: 100%;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .hero {
+      display: grid;
+      gap: 18px;
+      margin-bottom: 22px;
+      text-align: center;
+      animation: rise 0.6s ease-out both;
+    }
+
+    .eyebrow {
+      font-size: 12px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-weight: 600;
+      margin: 0 0 8px;
+    }
+
+    h1 {
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
+      font-size: clamp(2rem, 6vw, 3rem);
+      margin: 0 0 10px;
+    }
+
+    .lead {
+      color: var(--muted);
+      font-size: 1rem;
+      margin: 0;
+      max-width: 55ch;
+    }
+
+    .hero .lead {
+      margin: 0 auto;
+    }
+
+    .hero-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 16px 18px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(8px);
+    }
+
+    .guide-card {
+      background: rgba(12, 16, 24, 0.7);
+      box-shadow: none;
+    }
+
+    .hero-card h2 {
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
+      font-size: 1rem;
+      margin: 0 0 10px;
+    }
+
+    .hero-card ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .hero-card li span {
+      color: var(--accent-warm);
+      font-weight: 700;
+      margin-right: 8px;
+    }
+
+    .layout {
+      display: grid;
+      gap: 18px;
+    }
+
+    .top-panel {
+    max-width: 50%;
+    margin: 0 auto;
+      padding: 20px;
+    }
+
+    .top-grid {
+      display: grid;
+      gap: 18px;
+    }
+
+    .inputs-block {
+      display: grid;
+      gap: 14px;
+      align-items: start;
+      width: 100%;
+    }
+
+    .inputs-block .field {
+      margin-bottom: 0;
+    }
+
+    .inputs-grid {
+      display: grid;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .inputs-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .help-btn {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 1px solid rgba(77, 209, 200, 0.4);
+      background: rgba(77, 209, 200, 0.1);
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 0.9rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      margin-left: auto;
+      margin-top:-10px;
+
+    }
+
+    .help-btn:hover {
+      background: rgba(77, 209, 200, 0.2);
+    }
+
+    .actions {
+      display: grid;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(8px);
+    }
+
+    .panel h2 {
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
+      font-size: 1.1rem;
+      margin: 0 0 12px;
+    }
+
+    .results-panel{
+        width:70%;
+        margin: 0 auto;
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 14px;
+      min-width: 0;
+    }
+
+    label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    input[type="file"] {
+      width: 100%;
+      height: 44px;
+      padding: 10px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--panel-strong);
+      color: var(--ink);
+      font-size: 0.95rem;
+    }
+
+    #kmzFile {
+      color: transparent;
+    }
+
+    #kmzFile.has-file {
+      color: var(--ink);
+    }
+
+    input[type="file"]::file-selector-button {
+      margin-right: 12px;
+      border: none;
+      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+      color: #031b1a;
+      padding: 8px 14px;
+      border-radius: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    input[type="file"]::file-selector-button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 20px rgba(77, 209, 200, 0.35);
+    }
+
+
+    .inline-row {
+      display: grid;
+      gap: 10px;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      height: 44px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--panel-strong);
+      color: var(--ink);
+      font-size: 1rem;
+    }
+
+    .unit {
+      height: 44px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(77, 209, 200, 0.08);
+      color: var(--accent);
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-align: center;
+    }
+
+    .filter-box {
+      border-radius: 16px;
+      border: 1px solid rgba(243, 168, 59, 0.3);
+      background: rgba(243, 168, 59, 0.08);
+      padding: 12px 14px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      display: grid;
+      gap: 8px;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tag {
+      background: rgba(77, 209, 200, 0.2);
+      color: var(--accent);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border: 1px solid rgba(77, 209, 200, 0.35);
+    }
+
+    button {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 14px;
+      border: none;
+      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+      color: #031b1a;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: var(--glow);
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 18px 30px rgba(40, 164, 160, 0.35);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      border: 1px solid var(--border);
+      background: rgba(21, 27, 38, 0.9);
+      color: var(--muted);
+      min-height: 40px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(6, 8, 12, 0.72);
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      z-index: 50;
+    }
+
+    .modal-backdrop.hidden {
+      display: none;
+    }
+
+    .modal {
+      width: min(560px, 100%);
+      background: rgba(16, 20, 28, 0.98);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: 12px;
+    }
+
+    .modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .modal-head h2 {
+      margin: 0;
+      font-size: 1.1rem;
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
+    }
+
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(21, 27, 38, 0.9);
+      color: var(--ink);
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+
+    .modal-body ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .modal-body li span {
+      color: var(--accent-warm);
+      font-weight: 700;
+      margin-right: 8px;
+    }
+
+    .modal-slot {
+      border-radius: 14px;
+      border: 1px dashed rgba(140, 150, 170, 0.3);
+      padding: 12px;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .status .spinner {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid rgba(77, 209, 200, 0.25);
+      border-top-color: var(--accent);
+      animation: spin 0.8s linear infinite;
+      display: none;
+    }
+
+    .status[data-tone="info"] .spinner {
+      display: inline-block;
+    }
+
+    .status[data-tone="error"] .spinner {
+      display: none;
+    }
+
+    .status[data-tone="info"] {
+      background: rgba(77, 209, 200, 0.1);
+      border-color: rgba(77, 209, 200, 0.35);
+      color: var(--accent);
+    }
+
+    .status[data-tone="success"] {
+      background: rgba(80, 196, 130, 0.12);
+      border-color: rgba(80, 196, 130, 0.35);
+      color: #8ae2b0;
+    }
+
+    .status[data-tone="error"] {
+      background: rgba(235, 99, 99, 0.15);
+      border-color: rgba(235, 99, 99, 0.4);
+      color: #f5b1b1;
+    }
+
+    .status[data-tone="idle"] {
+      background: rgba(21, 27, 38, 0.9);
+      border-color: var(--border);
+      color: var(--muted);
+    }
+
+    .results-head {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+    }
+
+    .meta-card {
+      background: rgba(10, 13, 20, 0.55);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      display: grid;
+      gap: 4px;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .meta-card strong {
+      color: var(--ink);
+      font-size: 0.95rem;
+      font-weight: 600;
+      word-break: break-word;
+    }
+
+    .meta-wide {
+      grid-column: span 2;
+    }
+
+    .table-wrap {
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: rgba(12, 16, 24, 0.85);
+      overflow: hidden;
+    }
+
+    .table-scroll {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    thead {
+      background: rgba(21, 27, 38, 0.95);
+    }
+
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(140, 150, 170, 0.18);
+      text-align: left;
+      vertical-align: top;
+      word-break: break-word;
+    }
+
+    th {
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
+      font-size: 0.85rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    tbody tr {
+      transition: background 0.2s ease;
+    }
+
+    tbody tr:hover {
+      background: rgba(77, 209, 200, 0.08);
+    }
+
+    .cell-title {
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .cell-sub {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .cell-distance {
+      font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-weight: 600;
+      color: var(--accent-warm);
+      white-space: nowrap;
+    }
+
+    .cell-index {
+      font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-weight: 600;
+      color: var(--muted);
+      width: 56px;
+    }
+
+    .empty-state {
+      padding: 24px 16px;
+      color: var(--muted);
+      text-align: center;
+      border-top: 1px solid var(--border);
+      background: rgba(13, 17, 25, 0.7);
+    }
+
+    .notes {
+      margin-top: 14px;
+      font-size: 0.85rem;
+      color: var(--muted);
+      display: grid;
+      gap: 6px;
+    }
+
+    .notes ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .notes li {
+      margin-bottom: 6px;
+    }
+
+    input:focus-visible,
+    button:focus-visible {
+      outline: 2px solid rgba(77, 209, 200, 0.6);
+      outline-offset: 2px;
+    }
+
+    @keyframes rise {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">KMZ Utility</p>
+        <h1>Point Proximity Checker</h1>
+        <p class="lead">Dark-mode friendly and mobile-first. Upload a KMZ from Google My Maps and find which points sit too close together.</p>
+      </div>
+    </header>
+
+    <section class="layout">
+      <div class="panel top-panel">
+        <div class="top-grid">
+          <div class="inputs-block">
+            <div class="inputs-header">
+              <h2>Inputs</h2>
+              <button class="help-btn" id="openHowBtn" type="button" aria-haspopup="dialog" aria-controls="howModal" aria-label="How it works">?</button>
+            </div>
+
+            <div class="inputs-grid">
+              <div class="field">
+                <label for="kmzFile">KMZ file</label>
+                <input id="kmzFile" class="file-input" type="file" accept=".kmz" />
+              </div>
+
+              <div class="field">
+                <label for="threshold">Threshold distance</label>
+                <div class="inline-row threshold-row">
+                  <input id="threshold" type="number" value="30" min="1" step="1" />
+                  <div class="unit">meters</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="filter-box">
+              <strong>Layer filter</strong>
+              <span>Only points in layers with these keywords are included.</span>
+              <div class="tags">
+                <span class="tag">Gym</span>
+                <span class="tag">Pokestop</span>
+                <span class="tag">Powerspot</span>
+              </div>
+            </div>
+
+            <div class="actions" style="margin-top: 6px;">
+              <button id="analyzeBtn" disabled>Analyze proximity</button>
+              <div class="status hidden" id="status" data-tone="idle" aria-live="polite">
+                <span class="spinner" aria-hidden="true"></span>
+                <span class="status-text" id="statusText"></span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <section class="panel results-panel hidden" id="resultsPanel" style="margin-top: 18px;">
+      <div class="results-head">
+        <h2>Results</h2>
+        <p class="lead" style="margin: 0; font-size: 0.95rem;">Filtered pairs below the threshold will appear here.</p>
+      </div>
+
+      <div class="meta-grid">
+        <div class="meta-card">
+          <span>File</span>
+          <strong id="metaFile">—</strong>
+        </div>
+        <div class="meta-card">
+          <span>KML</span>
+          <strong id="metaKml">—</strong>
+        </div>
+        <div class="meta-card">
+          <span>Total points</span>
+          <strong id="metaTotal">—</strong>
+        </div>
+        <div class="meta-card">
+          <span>Matched points</span>
+          <strong id="metaMatched">—</strong>
+        </div>
+        <div class="meta-card">
+          <span>Threshold</span>
+          <strong id="metaThreshold">—</strong>
+        </div>
+        <div class="meta-card">
+          <span>Pairs</span>
+          <strong id="metaPairs">—</strong>
+        </div>
+        <div class="meta-card meta-wide">
+          <span>Matched layers</span>
+          <strong id="metaLayers">—</strong>
+        </div>
+      </div>
+
+      <div class="table-wrap" style="margin-top: 16px;">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Distance</th>
+                <th>Point A</th>
+                <th>Point B</th>
+              </tr>
+            </thead>
+            <tbody id="resultsBody"></tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="emptyState">Upload a KMZ to see results.</div>
+      </div>
+
+      <div class="notes">
+        <strong>Notes</strong>
+        <ul>
+          <li>Only Placemark points are considered. Lines and polygons are ignored.</li>
+          <li>Large files may take a moment; a grid index keeps the scan efficient.</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal-backdrop hidden" id="howModal" role="dialog" aria-modal="true" aria-labelledby="howTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <h2 id="howTitle">How it works</h2>
+        <button class="modal-close" id="closeHowBtn" type="button" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <ul>
+          <li><span>1.</span> Export your My Maps layer as a .kmz.</li>
+          <li><span>2.</span> Set the distance threshold in meters.</li>
+          <li><span>3.</span> We only scan layers containing Gym, Pokestop, or Powerspot.</li>
+        </ul>
+        <div class="modal-slot">Add images or examples here later.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Unzip KMZ -->
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+  <script>
+    const kmzFileEl = document.getElementById("kmzFile");
+    const thresholdEl = document.getElementById("threshold");
+    const analyzeBtn = document.getElementById("analyzeBtn");
+    const statusEl = document.getElementById("status");
+    const statusTextEl = document.getElementById("statusText");
+    const resultsBodyEl = document.getElementById("resultsBody");
+    const emptyStateEl = document.getElementById("emptyState");
+    const resultsPanelEl = document.getElementById("resultsPanel");
+    const openHowBtn = document.getElementById("openHowBtn");
+    const closeHowBtn = document.getElementById("closeHowBtn");
+    const howModalEl = document.getElementById("howModal");
+
+    const metaFileEl = document.getElementById("metaFile");
+    const metaKmlEl = document.getElementById("metaKml");
+    const metaTotalEl = document.getElementById("metaTotal");
+    const metaMatchedEl = document.getElementById("metaMatched");
+    const metaThresholdEl = document.getElementById("metaThreshold");
+    const metaPairsEl = document.getElementById("metaPairs");
+    const metaLayersEl = document.getElementById("metaLayers");
+
+    const layerKeywords = ["gym", "pokestop", "powerspot"];
+
+    kmzFileEl.addEventListener("change", () => {
+      const file = kmzFileEl.files?.[0];
+      analyzeBtn.disabled = !file;
+      kmzFileEl.classList.toggle("has-file", Boolean(file));
+      setStatus("", "idle");
+      resultsPanelEl.classList.add("hidden");
+      clearResults();
+    });
+
+    openHowBtn.addEventListener("click", () => {
+      howModalEl.classList.remove("hidden");
+    });
+
+    closeHowBtn.addEventListener("click", () => {
+      howModalEl.classList.add("hidden");
+    });
+
+    howModalEl.addEventListener("click", (event) => {
+      if (event.target === howModalEl) {
+        howModalEl.classList.add("hidden");
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !howModalEl.classList.contains("hidden")) {
+        howModalEl.classList.add("hidden");
+      }
+    });
+
+    analyzeBtn.addEventListener("click", async () => {
+      try {
+        const file = kmzFileEl.files?.[0];
+        if (!file) return;
+
+        resultsPanelEl.classList.remove("hidden");
+        const thresholdM = Number(thresholdEl.value) || 30;
+        if (thresholdM <= 0) throw new Error("Threshold must be > 0.");
+
+        setStatus("Reading KMZ…", "info");
+        clearResults();
+        emptyStateEl.hidden = false;
+        emptyStateEl.textContent = "Analyzing…";
+
+        const arrayBuffer = await file.arrayBuffer();
+
+        setStatus("Unzipping KMZ…", "info");
+        const zip = await JSZip.loadAsync(arrayBuffer);
+
+        const kmlName = Object.keys(zip.files).find(n => n.toLowerCase().endsWith(".kml"));
+        if (!kmlName) throw new Error("No .kml found inside the .kmz.");
+
+        setStatus("Parsing KML…", "info");
+        const kmlText = await zip.file(kmlName).async("text");
+        const kmlDom = new DOMParser().parseFromString(kmlText, "text/xml");
+
+        const placemarks = Array.from(kmlDom.getElementsByTagName("Placemark"));
+        const allPoints = [];
+        for (const placemark of placemarks) {
+          allPoints.push(...extractPointsFromPlacemark(placemark));
+        }
+
+        const matchedPoints = allPoints.filter(point => layerMatches(point.layer));
+        const matchedLayers = Array.from(new Set(matchedPoints.map(p => p.layer).filter(Boolean)));
+
+        updateMeta({
+          fileName: file.name,
+          kmlName,
+          totalPoints: allPoints.length,
+          matchedPoints: matchedPoints.length,
+          thresholdM,
+          pairs: 0,
+          matchedLayers
+        });
+
+        if (matchedPoints.length < 2) {
+          emptyStateEl.textContent = matchedPoints.length === 0
+            ? "No points found in matching layers."
+            : "Need at least two points to compare.";
+          setStatus("", "success");
+          return;
+        }
+
+        setStatus(`Found ${matchedPoints.length} points. Checking proximity (< ${thresholdM} m)…`, "info");
+
+        const results = findClosePairs(matchedPoints, thresholdM);
+
+        updateMeta({
+          fileName: file.name,
+          kmlName,
+          totalPoints: allPoints.length,
+          matchedPoints: matchedPoints.length,
+          thresholdM,
+          pairs: results.pairs.length,
+          matchedLayers
+        });
+
+        renderPairs(results.pairs);
+
+        if (results.pairs.length === 0) {
+          emptyStateEl.textContent = "No close pairs found under the threshold.";
+          emptyStateEl.hidden = false;
+        }
+
+        setStatus("", "success");
+      } catch (err) {
+        const message = String(err && err.message ? err.message : err);
+        setStatus(message, "error");
+        emptyStateEl.textContent = message;
+        emptyStateEl.hidden = false;
+      }
+    });
+
+    function setStatus(msg, tone) {
+      statusEl.dataset.tone = tone || "info";
+      if (tone === "info") {
+        statusTextEl.textContent = msg || "Working…";
+        statusEl.classList.remove("hidden");
+        return;
+      }
+
+      if (tone === "error") {
+        statusTextEl.textContent = msg || "Something went wrong.";
+        statusEl.classList.remove("hidden");
+        return;
+      }
+
+      statusTextEl.textContent = "";
+      statusEl.classList.add("hidden");
+    }
+
+    function clearResults() {
+      resultsBodyEl.innerHTML = "";
+      emptyStateEl.hidden = false;
+      emptyStateEl.textContent = "Upload a KMZ to see results.";
+      updateMeta({
+        fileName: "—",
+        kmlName: "—",
+        totalPoints: "—",
+        matchedPoints: "—",
+        thresholdM: "—",
+        pairs: "—",
+        matchedLayers: []
+      });
+    }
+
+    function updateMeta({ fileName, kmlName, totalPoints, matchedPoints, thresholdM, pairs, matchedLayers }) {
+      metaFileEl.textContent = fileName;
+      metaKmlEl.textContent = kmlName;
+      metaTotalEl.textContent = totalPoints;
+      metaMatchedEl.textContent = matchedPoints;
+      metaThresholdEl.textContent = thresholdM === "—" ? "—" : `${thresholdM} m`;
+      metaPairsEl.textContent = pairs;
+      metaLayersEl.textContent = matchedLayers.length ? matchedLayers.join(", ") : "—";
+    }
+
+    function renderPairs(pairs) {
+      resultsBodyEl.innerHTML = "";
+      if (!pairs.length) {
+        emptyStateEl.hidden = false;
+        return;
+      }
+
+      emptyStateEl.hidden = true;
+
+      pairs.sort((a, b) => a.distanceM - b.distanceM);
+
+      for (let idx = 0; idx < pairs.length; idx++) {
+        const p = pairs[idx];
+        const row = document.createElement("tr");
+
+        const indexCell = document.createElement("td");
+        indexCell.className = "cell-index";
+        indexCell.textContent = String(idx + 1);
+        indexCell.dataset.label = "#";
+
+        const distanceCell = document.createElement("td");
+        distanceCell.className = "cell-distance";
+        distanceCell.textContent = `${p.distanceM.toFixed(2)} m`;
+        distanceCell.dataset.label = "Distance";
+
+        const aCell = createPointCell(p.aName, p.aLayer, p.aLat, p.aLon);
+        aCell.dataset.label = "Point A";
+        const bCell = createPointCell(p.bName, p.bLayer, p.bLat, p.bLon);
+        bCell.dataset.label = "Point B";
+
+        row.append(indexCell, distanceCell, aCell, bCell);
+        resultsBodyEl.append(row);
+      }
+    }
+
+    function createPointCell(name, layer, lat, lon) {
+      const cell = document.createElement("td");
+
+      const title = document.createElement("div");
+      title.className = "cell-title";
+      title.textContent = name || "(unnamed)";
+
+      const layerLine = document.createElement("div");
+      layerLine.className = "cell-sub";
+      layerLine.textContent = layer ? `Layer: ${layer}` : "Layer: (unknown)";
+
+      const coords = document.createElement("div");
+      coords.className = "cell-sub";
+      coords.textContent = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+
+      cell.append(title, layerLine, coords);
+      return cell;
+    }
+
+    function layerMatches(layerName) {
+      if (!layerName) return false;
+      const lower = layerName.toLowerCase();
+      return layerKeywords.some(keyword => lower.includes(keyword));
+    }
+
+    function extractPointsFromPlacemark(placemark) {
+      const name = directName(placemark) || "(unnamed)";
+      const layer = getLayerName(placemark);
+      const points = [];
+
+      const pointEls = Array.from(placemark.getElementsByTagName("Point"));
+      for (const pointEl of pointEls) {
+        const coordEl = pointEl.getElementsByTagName("coordinates")[0];
+        if (!coordEl || !coordEl.textContent) continue;
+
+        const coordText = coordEl.textContent.trim();
+        const firstCoord = coordText.split(/\s+/)[0];
+        const parts = firstCoord.split(",");
+        if (parts.length < 2) continue;
+
+        const lon = Number(parts[0]);
+        const lat = Number(parts[1]);
+
+        if (isFinite(lat) && isFinite(lon)) {
+          points.push({ name, layer, lat, lon });
+        }
+      }
+
+      return points;
+    }
+
+    function directName(node) {
+      const children = Array.from(node.childNodes);
+      const nameEl = children.find(child => child.nodeType === 1 && child.tagName.toLowerCase() === "name");
+      return nameEl && nameEl.textContent ? nameEl.textContent.trim() : "";
+    }
+
+    function getLayerName(placemark) {
+      let documentName = "";
+      let node = placemark.parentNode;
+
+      while (node) {
+        if (node.nodeType === 1) {
+          const tag = node.tagName.toLowerCase();
+          if (tag === "folder") {
+            const folderName = directName(node);
+            if (folderName) return folderName;
+          }
+          if (tag === "document" && !documentName) {
+            const docName = directName(node);
+            if (docName) documentName = docName;
+          }
+        }
+        node = node.parentNode;
+      }
+
+      return documentName;
+    }
+
+    // Haversine distance in meters
+    function haversineMeters(lat1, lon1, lat2, lon2) {
+      const R = 6371000; // meters
+      const toRad = (d) => d * Math.PI / 180;
+
+      const φ1 = toRad(lat1), φ2 = toRad(lat2);
+      const Δφ = toRad(lat2 - lat1);
+      const Δλ = toRad(lon2 - lon1);
+
+      const a =
+        Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+        Math.cos(φ1) * Math.cos(φ2) *
+        Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    /**
+     * Find all point pairs within threshold using a simple grid hash (fast enough for lots of points).
+     * We bucket points into cells roughly sized to the threshold so we only compare near neighbors.
+     */
+    function findClosePairs(points, thresholdM) {
+      const metersPerDegLat = 111320; // approx
+      const cellLatDeg = thresholdM / metersPerDegLat * 1.2; // padding
+
+      const grid = new Map();
+      const key = (gx, gy) => `${gx},${gy}`;
+
+      const avgLat = points.reduce((s, p) => s + p.lat, 0) / points.length;
+      const metersPerDegLonAvg = metersPerDegLat * Math.cos(avgLat * Math.PI / 180) || 1e-9;
+      const cellLonDegFixed = (thresholdM / metersPerDegLonAvg) * 1.2;
+
+      function cellFixed(p) {
+        const gx = Math.floor(p.lon / cellLonDegFixed);
+        const gy = Math.floor(p.lat / cellLatDeg);
+        return { gx, gy };
+      }
+
+      for (let i = 0; i < points.length; i++) {
+        const c = cellFixed(points[i]);
+        const k = key(c.gx, c.gy);
+        if (!grid.has(k)) grid.set(k, []);
+        grid.get(k).push(i);
+      }
+
+      const pairs = [];
+      const seen = new Set();
+
+      for (let i = 0; i < points.length; i++) {
+        const p = points[i];
+        const c = cellFixed(p);
+
+        for (let dx = -1; dx <= 1; dx++) {
+          for (let dy = -1; dy <= 1; dy++) {
+            const k = key(c.gx + dx, c.gy + dy);
+            const bucket = grid.get(k);
+            if (!bucket) continue;
+
+            for (const j of bucket) {
+              if (j <= i) continue;
+              const q = points[j];
+
+              const pairKey = `${i}-${j}`;
+              if (seen.has(pairKey)) continue;
+              seen.add(pairKey);
+
+              const d = haversineMeters(p.lat, p.lon, q.lat, q.lon);
+              if (d < thresholdM) {
+                pairs.push({
+                  i, j,
+                  distanceM: d,
+                  aName: p.name, bName: q.name,
+                  aLayer: p.layer, bLayer: q.layer,
+                  aLat: p.lat, aLon: p.lon,
+                  bLat: q.lat, bLon: q.lon
+                });
+              }
+            }
+          }
+        }
+      }
+
+      return { pairs };
+    }
+  </script>
+</body>
+</html>
