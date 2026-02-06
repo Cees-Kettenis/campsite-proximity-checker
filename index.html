@@ -332,6 +332,107 @@
         border: 1px solid rgba(77, 209, 200, 0.35);
       }
 
+      .layer-picker {
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        background: rgba(12, 16, 24, 0.75);
+        padding: 14px;
+        display: grid;
+        gap: 12px;
+      }
+
+      .layer-picker-head {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        justify-content: space-between;
+        flex-wrap: wrap;
+      }
+
+      .layer-picker h3 {
+        margin: 0 0 6px;
+        font-size: 1rem;
+        font-family: "Space Grotesk", "Segoe UI", sans-serif;
+      }
+
+      .layer-picker p {
+        margin: 0;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+
+      .layer-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .ghost-btn {
+        width: auto;
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(77, 209, 200, 0.35);
+        background: rgba(77, 209, 200, 0.12);
+        color: var(--accent);
+        font-weight: 600;
+        font-size: 0.75rem;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        box-shadow: none;
+      }
+
+      .ghost-btn:hover {
+        transform: none;
+        box-shadow: none;
+        background: rgba(77, 209, 200, 0.2);
+      }
+
+      .layer-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .layer-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(140, 150, 170, 0.2);
+        background: rgba(21, 27, 38, 0.75);
+        cursor: pointer;
+      }
+
+      .layer-item input {
+        accent-color: var(--accent);
+      }
+
+      .layer-name {
+        font-weight: 600;
+        color: var(--ink);
+      }
+
+      .layer-meta {
+        margin-left: auto;
+        display: inline-flex;
+        gap: 8px;
+        align-items: center;
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+
+      .layer-badge {
+        padding: 2px 6px;
+        border-radius: 999px;
+        border: 1px solid rgba(243, 168, 59, 0.35);
+        background: rgba(243, 168, 59, 0.12);
+        color: var(--accent-warm);
+        font-weight: 700;
+        font-size: 0.65rem;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
       button {
         width: 100%;
         padding: 12px 16px;
@@ -830,7 +931,8 @@
                   <span class="tag">Pokestop</span>, or
                   <span class="tag">Powerspot</span>. Even if you name them
                   <span class="tag">Power Spot</span> or
-                  <span class="tag">Power-Spot</span>.</span
+                  <span class="tag">Power-Spot</span>. After analyzing, you can
+                  pick any layers to compare.</span
                 >
               </div>
 
@@ -888,10 +990,35 @@
             <span>Pairs</span>
             <strong id="metaPairs">—</strong>
           </div>
-          <div class="meta-card meta-wide">
-            <span>Matched layers</span>
-            <strong id="metaLayers">—</strong>
+        </div>
+
+        <div class="layer-picker hidden" id="layerPicker">
+          <div class="layer-picker-head">
+            <div>
+              <h3>Layer selection</h3>
+              <p>
+                Default selection uses keyword matching. Toggle layers to
+                compare different groups.
+              </p>
+            </div>
+            <div class="layer-actions">
+              <button
+                type="button"
+                class="ghost-btn"
+                id="selectAllLayers"
+              >
+                Select all
+              </button>
+              <button
+                type="button"
+                class="ghost-btn"
+                id="clearLayerSelection"
+              >
+                Clear
+              </button>
+            </div>
           </div>
+          <div class="layer-list" id="layerList"></div>
         </div>
 
         <div class="table-wrap" style="margin-top: 16px">
@@ -975,9 +1102,18 @@
       const metaMatchedEl = document.getElementById("metaMatched");
       const metaThresholdEl = document.getElementById("metaThreshold");
       const metaPairsEl = document.getElementById("metaPairs");
-      const metaLayersEl = document.getElementById("metaLayers");
+
+      const layerPickerEl = document.getElementById("layerPicker");
+      const layerListEl = document.getElementById("layerList");
+      const selectAllLayersBtn = document.getElementById("selectAllLayers");
+      const clearLayerSelectionBtn = document.getElementById(
+        "clearLayerSelection",
+      );
 
       const layerKeywords = ["gym", "pokestop", "powerspot"];
+      const NO_LAYER_KEY = "__NO_LAYER__";
+
+      let lastAnalysis = null;
 
       kmzFileEl.addEventListener("change", () => {
         const file = kmzFileEl.files?.[0];
@@ -1009,6 +1145,19 @@
         ) {
           howModalEl.classList.add("hidden");
         }
+      });
+
+      selectAllLayersBtn.addEventListener("click", () => {
+        if (!lastAnalysis) return;
+        const allKeys = new Set(
+          lastAnalysis.layerStats.map((layer) => layer.key),
+        );
+        setLayerSelection(allKeys);
+      });
+
+      clearLayerSelectionBtn.addEventListener("click", () => {
+        if (!lastAnalysis) return;
+        setLayerSelection(new Set());
       });
 
       analyzeBtn.addEventListener("click", async () => {
@@ -1047,56 +1196,23 @@
             allPoints.push(...extractPointsFromPlacemark(placemark));
           }
 
-          const matchedPoints = allPoints.filter((point) =>
-            layerMatches(point.layer),
-          );
-          const matchedLayers = Array.from(
-            new Set(matchedPoints.map((p) => p.layer).filter(Boolean)),
+          const layerStats = buildLayerStats(allPoints);
+          const defaultSelected = new Set(
+            layerStats
+              .filter((layer) => layer.matchesKeyword)
+              .map((layer) => layer.key),
           );
 
-          updateMeta({
+          lastAnalysis = {
             fileName: file.name,
             kmlName,
-            totalPoints: allPoints.length,
-            matchedPoints: matchedPoints.length,
             thresholdM,
-            pairs: 0,
-            matchedLayers,
-          });
+            allPoints,
+            layerStats,
+          };
 
-          if (matchedPoints.length < 2) {
-            emptyStateEl.textContent =
-              matchedPoints.length === 0
-                ? "No points found in matching layers."
-                : "Need at least two points to compare.";
-            setStatus("", "success");
-            return;
-          }
-
-          setStatus(
-            `Found ${matchedPoints.length} points. Checking proximity (< ${thresholdM} m)…`,
-            "info",
-          );
-
-          const results = findClosePairs(matchedPoints, thresholdM);
-
-          updateMeta({
-            fileName: file.name,
-            kmlName,
-            totalPoints: allPoints.length,
-            matchedPoints: matchedPoints.length,
-            thresholdM,
-            pairs: results.pairs.length,
-            matchedLayers,
-          });
-
-          renderPairs(results.pairs);
-
-          if (results.pairs.length === 0) {
-            emptyStateEl.textContent =
-              "No close pairs found under the threshold.";
-            emptyStateEl.hidden = false;
-          }
+          renderLayerPicker(layerStats, defaultSelected);
+          applyLayerSelection();
 
           setStatus("", "success");
         } catch (err) {
@@ -1129,6 +1245,9 @@
         resultsBodyEl.innerHTML = "";
         emptyStateEl.hidden = false;
         emptyStateEl.textContent = "Upload a KMZ to see results.";
+        layerListEl.innerHTML = "";
+        layerPickerEl.classList.add("hidden");
+        lastAnalysis = null;
         updateMeta({
           fileName: "—",
           kmlName: "—",
@@ -1136,7 +1255,6 @@
           matchedPoints: "—",
           thresholdM: "—",
           pairs: "—",
-          matchedLayers: [],
         });
       }
 
@@ -1147,7 +1265,6 @@
         matchedPoints,
         thresholdM,
         pairs,
-        matchedLayers,
       }) {
         metaFileEl.textContent = fileName;
         metaKmlEl.textContent = kmlName;
@@ -1156,9 +1273,174 @@
         metaThresholdEl.textContent =
           thresholdM === "—" ? "—" : `${thresholdM} m`;
         metaPairsEl.textContent = pairs;
-        metaLayersEl.textContent = matchedLayers.length
-          ? matchedLayers.join(", ")
-          : "—";
+      }
+
+      function layerKey(layerName) {
+        const trimmed = layerName ? layerName.trim() : "";
+        return trimmed ? trimmed : NO_LAYER_KEY;
+      }
+
+      function layerLabel(layerName) {
+        const trimmed = layerName ? layerName.trim() : "";
+        return trimmed ? trimmed : "No layer name";
+      }
+
+      function buildLayerStats(points) {
+        const map = new Map();
+        for (const point of points) {
+          const key = layerKey(point.layer);
+          const label = layerLabel(point.layer);
+          if (!map.has(key)) {
+            map.set(key, {
+              key,
+              label,
+              count: 0,
+              matchesKeyword: layerMatches(point.layer),
+            });
+          }
+          const entry = map.get(key);
+          entry.count += 1;
+          if (!entry.matchesKeyword && layerMatches(point.layer)) {
+            entry.matchesKeyword = true;
+          }
+        }
+
+        return Array.from(map.values()).sort((a, b) =>
+          a.label.localeCompare(b.label),
+        );
+      }
+
+      function renderLayerPicker(layerStats, selectedKeys) {
+        layerListEl.innerHTML = "";
+        if (!layerStats.length) {
+          layerPickerEl.classList.add("hidden");
+          return;
+        }
+
+        layerPickerEl.classList.remove("hidden");
+
+        for (const layer of layerStats) {
+          const row = document.createElement("label");
+          row.className = "layer-item";
+
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.dataset.key = layer.key;
+          checkbox.checked = selectedKeys.has(layer.key);
+          checkbox.addEventListener("change", () => {
+            applyLayerSelection();
+          });
+
+          const name = document.createElement("span");
+          name.className = "layer-name";
+          name.textContent = layer.label;
+
+          const meta = document.createElement("span");
+          meta.className = "layer-meta";
+
+          const count = document.createElement("span");
+          count.textContent = `${layer.count} point${
+            layer.count === 1 ? "" : "s"
+          }`;
+          meta.append(count);
+
+          if (layer.matchesKeyword) {
+            const badge = document.createElement("span");
+            badge.className = "layer-badge";
+            badge.textContent = "default";
+            meta.append(badge);
+          }
+
+          row.append(checkbox, name, meta);
+          layerListEl.append(row);
+        }
+      }
+
+      function getSelectedLayerKeys() {
+        const selected = new Set();
+        const inputs = layerListEl.querySelectorAll('input[type="checkbox"]');
+        for (const input of inputs) {
+          if (input.checked) selected.add(input.dataset.key);
+        }
+        return selected;
+      }
+
+      function setLayerSelection(keys) {
+        const inputs = layerListEl.querySelectorAll('input[type="checkbox"]');
+        for (const input of inputs) {
+          input.checked = keys.has(input.dataset.key);
+        }
+        applyLayerSelection();
+      }
+
+      function applyLayerSelection() {
+        if (!lastAnalysis) return;
+        runComparison(getSelectedLayerKeys());
+      }
+
+      function runComparison(selectedKeys) {
+        if (!lastAnalysis) return;
+        const { fileName, kmlName, allPoints, layerStats } = lastAnalysis;
+        const thresholdM = lastAnalysis.thresholdM;
+
+        const selectedLayers = layerStats.filter((layer) =>
+          selectedKeys.has(layer.key),
+        );
+
+        const matchedPoints = allPoints.filter((point) =>
+          selectedKeys.has(layerKey(point.layer)),
+        );
+
+        updateMeta({
+          fileName,
+          kmlName,
+          totalPoints: allPoints.length,
+          matchedPoints: matchedPoints.length,
+          thresholdM,
+          pairs: 0,
+        });
+
+        resultsBodyEl.innerHTML = "";
+
+        if (!layerStats.length) {
+          emptyStateEl.textContent = "No layers found in this file.";
+          emptyStateEl.hidden = false;
+          return;
+        }
+
+        if (selectedKeys.size === 0) {
+          emptyStateEl.textContent = "Select at least one layer to compare.";
+          emptyStateEl.hidden = false;
+          return;
+        }
+
+        if (matchedPoints.length < 2) {
+          emptyStateEl.textContent =
+            matchedPoints.length === 0
+              ? "No points found in selected layers."
+              : "Need at least two points to compare.";
+          emptyStateEl.hidden = false;
+          return;
+        }
+
+        const results = findClosePairs(matchedPoints, thresholdM);
+
+        updateMeta({
+          fileName,
+          kmlName,
+          totalPoints: allPoints.length,
+          matchedPoints: matchedPoints.length,
+          thresholdM,
+          pairs: results.pairs.length,
+        });
+
+        renderPairs(results.pairs);
+
+        if (results.pairs.length === 0) {
+          emptyStateEl.textContent =
+            "No close pairs found under the threshold.";
+          emptyStateEl.hidden = false;
+        }
       }
 
       function renderPairs(pairs) {
