@@ -397,16 +397,24 @@
       .layer-item {
         display: flex;
         align-items: center;
-        gap: 10px;
+        justify-content: space-between;
+        gap: 12px;
         padding: 10px 12px;
         border-radius: 12px;
         border: 1px solid rgba(140, 150, 170, 0.2);
         background: rgba(21, 27, 38, 0.75);
-        cursor: pointer;
       }
 
-      .layer-item input {
+      .layer-item input[type="checkbox"] {
         accent-color: var(--accent);
+      }
+
+      .layer-compare {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        width: auto;
       }
 
       .layer-name {
@@ -415,12 +423,19 @@
       }
 
       .layer-meta {
-        margin-left: auto;
+        display: inline-flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 6px;
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+
+      .layer-meta-top {
         display: inline-flex;
         gap: 8px;
         align-items: center;
-        font-size: 0.75rem;
-        color: var(--muted);
+        justify-content: flex-end;
       }
 
       .layer-badge {
@@ -433,6 +448,27 @@
         font-size: 0.65rem;
         letter-spacing: 0.05em;
         text-transform: uppercase;
+      }
+
+      .existing-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 2px 8px;
+        width: auto;
+        border-radius: 999px;
+        border: 1px solid rgba(243, 168, 59, 0.3);
+        background: rgba(243, 168, 59, 0.08);
+        color: var(--accent-warm);
+        font-size: 0.65rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .existing-toggle input[type="checkbox"] {
+        margin: 0;
+        accent-color: var(--accent-warm);
       }
 
       button {
@@ -934,8 +970,9 @@
                   <span class="tag">Powerspot</span>. Even if you name them
                   <span class="tag">Power Spot</span> or
                   <span class="tag">Power-Spot</span>. After analyzing, you can
-                  pick any layers to compare.</span
-                >
+                  pick any layers to compare. <br />  I will try to auto detect <span class="tag">Existing</span> layers and not compare between them.</span>
+                 
+
               </div>
 
               <div class="actions" style="margin-top: 6px">
@@ -1000,7 +1037,8 @@
               <h3>Layer selection</h3>
               <p>
                 Default selection uses keyword matching. Toggle layers to
-                compare different groups.
+                compare and mark any layer as Existing to skip Existing vs
+                Existing pairs.
               </p>
             </div>
             <div class="layer-actions">
@@ -1065,7 +1103,7 @@
         </div>
         <div class="modal-body">
           <ul>
-            <li><span>1.</span> Make sure your existing POI's and Suggested POI's layers have the keyword "gym", "powerspot" and "pokestop". Having a space or - does not matter.</li>
+            <li><span>1.</span> Make sure your existing POI's have the word "existing" + "gym", "powerspot" or "pokestop". And Suggested POI's layers have the keyword "gym", "powerspot" or "pokestop". Having a space or - does not matter.</li>
             <img class="user-manual-image" src="https://raw.githubusercontent.com/Cees-Kettenis/campsite-proximity-checker/refs/heads/main/assets/screenshots/1.png" />
             <li><span>2.</span> Export My Maps layer as a .kmz. Leave the option default on the popup.</li>
             <img class="user-manual-image" src="https://raw.githubusercontent.com/Cees-Kettenis/campsite-proximity-checker/refs/heads/main/assets/screenshots/2.png" />
@@ -1073,9 +1111,10 @@
             <img class="user-manual-image" src="https://raw.githubusercontent.com/Cees-Kettenis/campsite-proximity-checker/refs/heads/main/assets/screenshots/3.png" />
             <li><span>4.</span>Click Analyze proximity</li>
             <img class="user-manual-image" src="https://raw.githubusercontent.com/Cees-Kettenis/campsite-proximity-checker/refs/heads/main/assets/screenshots/4.png" />
-            <li><span>5.</span>The results will appear below. You can check the points that are to close, and ensure all layers are found.</li>
+            <li><span>5.</span>Select your layers and mark them as existing if not autodetected correctly.</li>
             <img class="user-manual-image" src="https://raw.githubusercontent.com/Cees-Kettenis/campsite-proximity-checker/refs/heads/main/assets/screenshots/5.png" />
-
+            <li><span>6.</span>Check your results below. And adjust your My Maps layers if needed.</li>
+            <img class="user-manual-image" src="https://raw.githubusercontent.com/Cees-Kettenis/campsite-proximity-checker/refs/heads/main/assets/screenshots/6.png" />
 
         </ul>
         </div>
@@ -1290,7 +1329,7 @@
       function buildLayerStats(points) {
         const map = new Map();
         for (const point of points) {
-          const key = layerKey(point.layer);
+          const key = point.layerKey || layerKey(point.layer);
           const label = layerLabel(point.layer);
           if (!map.has(key)) {
             map.set(key, {
@@ -1298,12 +1337,16 @@
               label,
               count: 0,
               matchesKeyword: layerMatches(point.layer),
+              isExisting: layerIsExisting(point.layer),
             });
           }
           const entry = map.get(key);
           entry.count += 1;
           if (!entry.matchesKeyword && layerMatches(point.layer)) {
             entry.matchesKeyword = true;
+          }
+          if (!entry.isExisting && layerIsExisting(point.layer)) {
+            entry.isExisting = true;
           }
         }
 
@@ -1322,45 +1365,74 @@
         layerPickerEl.classList.remove("hidden");
 
         for (const layer of layerStats) {
-          const row = document.createElement("label");
+          const row = document.createElement("div");
           row.className = "layer-item";
 
-          const checkbox = document.createElement("input");
-          checkbox.type = "checkbox";
-          checkbox.dataset.key = layer.key;
-          checkbox.checked = selectedKeys.has(layer.key);
-          checkbox.addEventListener("change", () => {
+          const compare = document.createElement("label");
+          compare.className = "layer-compare";
+
+          const compareCheckbox = document.createElement("input");
+          compareCheckbox.type = "checkbox";
+          compareCheckbox.dataset.key = layer.key;
+          compareCheckbox.dataset.role = "compare";
+          compareCheckbox.checked = selectedKeys.has(layer.key);
+          compareCheckbox.addEventListener("change", () => {
             applyLayerSelection();
           });
 
           const name = document.createElement("span");
           name.className = "layer-name";
           name.textContent = layer.label;
+          compare.append(compareCheckbox, name);
 
           const meta = document.createElement("span");
           meta.className = "layer-meta";
+
+          const metaTop = document.createElement("span");
+          metaTop.className = "layer-meta-top";
 
           const count = document.createElement("span");
           count.textContent = `${layer.count} point${
             layer.count === 1 ? "" : "s"
           }`;
-          meta.append(count);
+          metaTop.append(count);
 
           if (layer.matchesKeyword) {
             const badge = document.createElement("span");
             badge.className = "layer-badge";
             badge.textContent = "default";
-            meta.append(badge);
+            metaTop.append(badge);
           }
 
-          row.append(checkbox, name, meta);
+          const existingToggle = document.createElement("label");
+          existingToggle.className = "existing-toggle";
+
+          const existingCheckbox = document.createElement("input");
+          existingCheckbox.type = "checkbox";
+          existingCheckbox.dataset.role = "existing";
+          existingCheckbox.dataset.key = layer.key;
+          existingCheckbox.checked = Boolean(layer.isExisting);
+          existingCheckbox.addEventListener("change", () => {
+            setLayerExisting(layer.key, existingCheckbox.checked);
+          });
+
+          const existingText = document.createElement("span");
+          existingText.textContent = "existing";
+
+          existingToggle.append(existingCheckbox, existingText);
+          meta.append(metaTop);
+          meta.append(existingToggle);
+
+          row.append(compare, meta);
           layerListEl.append(row);
         }
       }
 
       function getSelectedLayerKeys() {
         const selected = new Set();
-        const inputs = layerListEl.querySelectorAll('input[type="checkbox"]');
+        const inputs = layerListEl.querySelectorAll(
+          'input[type="checkbox"][data-role="compare"]',
+        );
         for (const input of inputs) {
           if (input.checked) selected.add(input.dataset.key);
         }
@@ -1368,10 +1440,20 @@
       }
 
       function setLayerSelection(keys) {
-        const inputs = layerListEl.querySelectorAll('input[type="checkbox"]');
+        const inputs = layerListEl.querySelectorAll(
+          'input[type="checkbox"][data-role="compare"]',
+        );
         for (const input of inputs) {
           input.checked = keys.has(input.dataset.key);
         }
+        applyLayerSelection();
+      }
+
+      function setLayerExisting(key, isExisting) {
+        if (!lastAnalysis) return;
+        const layer = lastAnalysis.layerStats.find((entry) => entry.key === key);
+        if (!layer) return;
+        layer.isExisting = isExisting;
         applyLayerSelection();
       }
 
@@ -1385,12 +1467,12 @@
         const { fileName, kmlName, allPoints, layerStats } = lastAnalysis;
         const thresholdM = lastAnalysis.thresholdM;
 
-        const selectedLayers = layerStats.filter((layer) =>
-          selectedKeys.has(layer.key),
+        const existingLayerKeys = new Set(
+          layerStats.filter((layer) => layer.isExisting).map((layer) => layer.key),
         );
 
         const matchedPoints = allPoints.filter((point) =>
-          selectedKeys.has(layerKey(point.layer)),
+          selectedKeys.has(point.layerKey || layerKey(point.layer)),
         );
 
         updateMeta({
@@ -1425,7 +1507,9 @@
           return;
         }
 
-        const results = findClosePairs(matchedPoints, thresholdM);
+        const results = findClosePairs(matchedPoints, thresholdM, {
+          existingLayerKeys,
+        });
 
         updateMeta({
           fileName,
@@ -1516,6 +1600,12 @@
         );
       }
 
+      function layerIsExisting(layerName) {
+        if (!layerName) return false;
+        const normalized = normalizeLayerName(layerName);
+        return normalized.includes("existing");
+      }
+
       function extractPointsFromPlacemark(placemark) {
         const name = directName(placemark) || "(unnamed)";
         const layer = getLayerName(placemark);
@@ -1535,7 +1625,13 @@
           const lat = Number(parts[1]);
 
           if (isFinite(lat) && isFinite(lon)) {
-            points.push({ name, layer, lat, lon });
+            points.push({
+              name,
+              layer,
+              layerKey: layerKey(layer),
+              lat,
+              lon,
+            });
           }
         }
 
@@ -1595,7 +1691,8 @@
        * Find all point pairs within threshold using a simple grid hash (fast enough for lots of points).
        * We bucket points into cells roughly sized to the threshold so we only compare near neighbors.
        */
-      function findClosePairs(points, thresholdM) {
+      function findClosePairs(points, thresholdM, options = {}) {
+        const existingLayerKeys = options.existingLayerKeys || new Set();
         const metersPerDegLat = 111320; // approx
         const cellLatDeg = (thresholdM / metersPerDegLat) * 1.2; // padding
 
@@ -1625,6 +1722,8 @@
 
         for (let i = 0; i < points.length; i++) {
           const p = points[i];
+          const pLayerKey = p.layerKey || layerKey(p.layer);
+          const pIsExisting = existingLayerKeys.has(pLayerKey);
           const c = cellFixed(p);
 
           for (let dx = -1; dx <= 1; dx++) {
@@ -1636,6 +1735,11 @@
               for (const j of bucket) {
                 if (j <= i) continue;
                 const q = points[j];
+                const qLayerKey = q.layerKey || layerKey(q.layer);
+
+                if (pIsExisting && existingLayerKeys.has(qLayerKey)) {
+                  continue;
+                }
 
                 const pairKey = `${i}-${j}`;
                 if (seen.has(pairKey)) continue;
